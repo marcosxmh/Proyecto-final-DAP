@@ -2,11 +2,12 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.net.URL;
 import java.util.List;
 import java.util.Map;
 
 public class UserGUI extends JFrame {
-    private Subscriber subscriber;
+    private Observer subscriber;
     private JTextField searchField;
     private JButton searchButton;
     private JList<String> channelList;
@@ -15,13 +16,17 @@ public class UserGUI extends JFrame {
     private JButton subscribeButton;
     private JButton unsubscribeButton;
     private JTextArea notificationArea;
+    private JComboBox<String> filterTypeComboBox;
+    private JTextField filterInputField;
+    private JButton applyFilterButton;
+    private JPanel subscribedChannelsPanel;
 
     public UserGUI(String userName, YouTubeAPIService apiService) {
         subscriber = new Subscriber(userName);
         this.apiService = apiService;
 
         setTitle("User: " + userName);
-        setSize(450, 350);
+        setSize(600, 600);
         setLocationRelativeTo(null);
 
         // Create components
@@ -33,6 +38,19 @@ public class UserGUI extends JFrame {
         unsubscribeButton = new JButton("Unsubscribe");
         notificationArea = new JTextArea(5, 30);
         notificationArea.setEditable(false);
+        subscribedChannelsPanel = new JPanel();
+        subscribedChannelsPanel.setLayout(new BoxLayout(subscribedChannelsPanel, BoxLayout.Y_AXIS));
+
+        // Recommendation components
+        JButton recommendPopularButton = new JButton("Recommend Popular");
+        JButton recommendSimilarButton = new JButton("Recommend Similar");
+        JTextArea recommendationArea = new JTextArea(5, 30);
+        recommendationArea.setEditable(false);
+
+        // Filter components
+        filterTypeComboBox = new JComboBox<>(new String[]{"Keyword", "Category"});
+        filterInputField = new JTextField(15);
+        applyFilterButton = new JButton("Apply Filter");
 
         // Set up layout
         setLayout(new BorderLayout());
@@ -60,6 +78,27 @@ public class UserGUI extends JFrame {
         notificationScrollPane.setPreferredSize(new Dimension(400, 150));
         notificationPanel.add(notificationScrollPane, BorderLayout.CENTER);
         bottomPanel.add(notificationPanel);
+
+        JPanel recommendationPanel = new JPanel(new BorderLayout());
+        recommendationPanel.add(new JLabel("Recommendations:"), BorderLayout.NORTH);
+        JScrollPane recommendationScrollPane = new JScrollPane(recommendationArea);
+        recommendationScrollPane.setPreferredSize(new Dimension(400, 150));
+        recommendationPanel.add(recommendPopularButton, BorderLayout.WEST);
+        recommendationPanel.add(recommendSimilarButton, BorderLayout.EAST);
+        recommendationPanel.add(recommendationScrollPane, BorderLayout.CENTER);
+        bottomPanel.add(recommendationPanel);
+
+        JPanel filterPanel = new JPanel();
+        filterPanel.add(new JLabel("Filter Type:"));
+        filterPanel.add(filterTypeComboBox);
+        filterPanel.add(filterInputField);
+        filterPanel.add(applyFilterButton);
+        bottomPanel.add(filterPanel);
+
+        JScrollPane subscribedChannelsScrollPane = new JScrollPane(subscribedChannelsPanel);
+        subscribedChannelsScrollPane.setPreferredSize(new Dimension(400, 150));
+        bottomPanel.add(new JLabel("Subscribed Channels:"));
+        bottomPanel.add(subscribedChannelsScrollPane);
 
         add(bottomPanel, BorderLayout.SOUTH);
 
@@ -106,6 +145,7 @@ public class UserGUI extends JFrame {
                         return;
                     }
                     apiService.getChannel(selectedChannel).subscribe(subscriber);
+                    updateSubscribedChannels();
                     JOptionPane.showMessageDialog(null, "Subscribed to " + selectedChannel);
                 }
             }
@@ -125,28 +165,104 @@ public class UserGUI extends JFrame {
                         return;
                     }
                     apiService.getChannel(selectedChannel).unsubscribe(subscriber);
+                    updateSubscribedChannels();
                     JOptionPane.showMessageDialog(null, "Unsubscribed from " + selectedChannel);
                 }
+            }
+        });
+
+        recommendPopularButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                RecommendationContext context = new RecommendationContext();
+                context.setStrategy(new PopularChannelsStrategy());
+                List<String> recommendations = context.getRecommendations(apiService.getChannels(), apiService);
+                displayRecommendations(recommendations, recommendationArea);
+            }
+        });
+
+        recommendSimilarButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                RecommendationContext context = new RecommendationContext();
+                context.setStrategy(new SimilarChannelsStrategy());
+                List<String> recommendations = context.getRecommendations(apiService.getChannels(), apiService);
+                displayRecommendations(recommendations, recommendationArea);
+            }
+        });
+
+        applyFilterButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String filterType = (String) filterTypeComboBox.getSelectedItem();
+                String filterValue = filterInputField.getText();
+
+                if (filterValue.isEmpty()) {
+                    JOptionPane.showMessageDialog(null, "Please enter a filter value.");
+                    return;
+                }
+
+                if ("Keyword".equals(filterType)) {
+                    subscriber = new Subscriber(((Subscriber) subscriber).getName()); // Reset subscriber
+                    subscriber = new KeywordFilter(subscriber, List.of(filterValue.split(",")));
+                } else if ("Category".equals(filterType)) {
+                    subscriber = new Subscriber(((Subscriber) subscriber).getName()); // Reset subscriber
+                    subscriber = new CategoryFilter(subscriber, List.of(filterValue.split(",")));
+                }
+
+                JOptionPane.showMessageDialog(null, "Filter applied: " + filterType + " -> " + filterValue);
             }
         });
 
         // Initially disable buttons
         subscribeButton.setEnabled(false);
         unsubscribeButton.setEnabled(false);
+
+        updateSubscribedChannels();
     }
 
     public String getUserName() {
-        return subscriber.getName();
+        return ((Subscriber) subscriber).getName();
     }
 
-    public Subscriber getSubscriber() {
+    public Observer getSubscriber() {
         return subscriber;
     }
 
     public void updateNotificationArea() {
         notificationArea.setText("");
-        for (Map.Entry<String, String> entry : subscriber.getLastVideos().entrySet()) {
+        for (Map.Entry<String, String> entry : ((Subscriber) subscriber).getLastVideos().entrySet()) {
             notificationArea.append("Video: " + entry.getKey() + " | Channel: " + entry.getValue() + "\n");
         }
+    }
+
+    private void displayRecommendations(List<String> recommendations, JTextArea area) {
+        area.setText("");
+        if (recommendations.isEmpty()) {
+            area.append("No recommendations available.\n");
+        } else {
+            for (String channel : recommendations) {
+                area.append(channel + "\n");
+            }
+        }
+    }
+
+    private void updateSubscribedChannels() {
+        subscribedChannelsPanel.removeAll();
+        for (YouTubeChannel channel : apiService.getChannels()) {
+            if (channel.getObservers().contains(subscriber)) {
+                try {
+                    String channelName = channel.getSearchQuery();
+                    URL imageUrl = new URL("https://yt3.ggpht.com/a-/" + channelName + "/photo.jpg"); // Placeholder for actual image URL
+                    ImageIcon channelIcon = new ImageIcon(imageUrl);
+                    JLabel channelLabel = new JLabel(channelName, channelIcon, JLabel.LEFT);
+                    subscribedChannelsPanel.add(channelLabel);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        subscribedChannelsPanel.revalidate();
+        subscribedChannelsPanel.repaint();
     }
 }
