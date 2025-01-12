@@ -4,6 +4,8 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.*;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -317,4 +319,123 @@ public class YouTubeAPIService {
             return null;
         }
     }
+
+    public List<String> getSimilarChannelsByDescription(String description) {
+        List<String> similarChannels = new ArrayList<>();
+        try {
+            // Codificar la descripción para que sea segura en la URL
+            String encodedDescription = URLEncoder.encode(description, StandardCharsets.UTF_8.toString());
+            String urlString = String.format(BASE_URL + "?part=snippet&q=%s&type=channel&key=%s",
+                    encodedDescription, API_KEY);
+
+            HttpURLConnection connection = (HttpURLConnection) new URL(urlString).openConnection();
+            connection.setRequestMethod("GET");
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                StringBuilder response = new StringBuilder();
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                reader.close();
+
+                JSONObject jsonResponse = new JSONObject(response.toString());
+                JSONArray items = jsonResponse.getJSONArray("items");
+
+                for (int i = 0; i < items.length(); i++) {
+                    JSONObject channel = items.getJSONObject(i).getJSONObject("snippet");
+                    similarChannels.add(channel.getString("channelTitle")); // Solo nombres de canales
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return similarChannels; // Devuelve solo los nombres de los canales
+    }
+
+
+    // Método para encontrar canales similares basados en tags
+    public List<String> getSimilarChannelsByTags(List<String> tags) {
+        List<String> similarChannels = new ArrayList<>();
+        try {
+            for (String tag : tags) {
+                String urlString = String.format(BASE_URL + "?part=snippet&q=%s&type=channel&key=%s",
+                        tag.replace(" ", "%20"), API_KEY);
+                JSONObject response = fetchJsonResponse(urlString);
+                similarChannels.addAll(extractChannelTitlesFromResponse(response));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return similarChannels;
+    }
+
+    // Método auxiliar para extraer títulos de canales de una respuesta JSON
+    private List<String> extractChannelTitlesFromResponse(JSONObject response) {
+        List<String> channelTitles = new ArrayList<>();
+        if (response.has("items")) {
+            for (Object item : response.getJSONArray("items")) {
+                JSONObject channel = ((JSONObject) item).getJSONObject("snippet");
+                channelTitles.add(channel.getString("channelTitle"));
+            }
+        }
+        return channelTitles;
+    }
+
+    // Método para realizar peticiones a la API y obtener un JSON
+    private JSONObject fetchJsonResponse(String urlString) throws Exception {
+        // Realizar conexión HTTP (similar a otros métodos en YouTubeAPIService)
+        // Retornar JSON como en otros métodos
+        return new JSONObject(); // Simplificación
+    }
+
+    public List<String> getChannelTags(String channelId) {
+        List<String> tags = new ArrayList<>();
+        try {
+            // URL para obtener detalles del canal con tags
+            String url = String.format("https://www.googleapis.com/youtube/v3/channels?part=snippet&id=%s&key=%s",
+                    channelId, API_KEY);
+
+            // Conexión HTTP
+            HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+            connection.setRequestMethod("GET");
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                StringBuilder response = new StringBuilder();
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                reader.close();
+
+                // Parsear la respuesta JSON
+                JSONObject jsonResponse = new JSONObject(response.toString());
+                JSONArray items = jsonResponse.getJSONArray("items");
+                if (items.length() > 0) {
+                    JSONObject snippet = items.getJSONObject(0).getJSONObject("snippet");
+
+                    // Suponiendo que los tags están disponibles como un arreglo JSON
+                    if (snippet.has("tags")) {
+                        JSONArray tagsArray = snippet.getJSONArray("tags");
+                        for (int i = 0; i < tagsArray.length(); i++) {
+                            tags.add(tagsArray.getString(i));
+                        }
+                    }
+                }
+            } else {
+                System.out.println("Error fetching channel tags. Response code: " + responseCode);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return tags;
+    }
+
+
 }

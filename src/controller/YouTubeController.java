@@ -1,16 +1,23 @@
 package controller;
 
+import model.RecommendationStrategy;
+import model.DescriptionBasedRecommendation;
+import model.TagsBasedRecommendation;
 import model.YouTubeAPIService;
-import model.YouTubeChannel;
 import view.UserGUI;
+import model.YouTubeChannel;
+
+import java.util.List;
 
 public class YouTubeController {
     private YouTubeAPIService apiService;
     private UserGUI userGUI;
+    private RecommendationStrategy recommendationStrategy;
 
     public YouTubeController(YouTubeAPIService apiService, UserGUI userGUI) {
         this.apiService = apiService;
         this.userGUI = userGUI;
+        this.recommendationStrategy = new DescriptionBasedRecommendation(); // Estrategia predeterminada
         initController();
     }
 
@@ -18,6 +25,7 @@ public class YouTubeController {
         userGUI.getSearchButton().addActionListener(e -> searchChannels());
         userGUI.getSubscribeButton().addActionListener(e -> subscribeUser());
         userGUI.getUnsubscribeButton().addActionListener(e -> unsubscribeUser());
+        userGUI.getRecommendButton().addActionListener(e -> recommendSimilarChannels());
     }
 
     private void searchChannels() {
@@ -33,8 +41,7 @@ public class YouTubeController {
         String selectedChannel = userGUI.getSelectedChannel();
         if (selectedChannel != null) {
             if (!apiService.channelExists(selectedChannel)) {
-                YouTubeChannel newChannel = new YouTubeChannel(selectedChannel);
-                apiService.addChannel(newChannel);
+                apiService.addChannel(new YouTubeChannel(selectedChannel));
             }
             YouTubeChannel channel = apiService.getChannel(selectedChannel);
             if (channel.getObservers().contains(userGUI.getSubscriber())) {
@@ -61,5 +68,19 @@ public class YouTubeController {
             channel.unsubscribe(userGUI.getSubscriber());
             userGUI.showMessage("Unsubscribed from " + selectedChannel);
         }
+    }
+
+    private void recommendSimilarChannels() {
+        String selectedChannel = userGUI.getSelectedChannel();
+        if (selectedChannel != null) {
+            List<String> recommendations = recommendationStrategy.recommendChannels(selectedChannel, apiService);
+            userGUI.showRecommendations(recommendations);
+        } else {
+            userGUI.showMessage("Please select a channel first.");
+        }
+    }
+
+    public void setRecommendationStrategy(RecommendationStrategy strategy) {
+        this.recommendationStrategy = strategy;
     }
 }
