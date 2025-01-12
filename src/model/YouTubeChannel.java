@@ -1,7 +1,8 @@
+package model;
 import java.util.ArrayList;
 import java.util.List;
 
-public class YouTubeChannel {
+public class YouTubeChannel implements Subject {
     private List<Observer> observers = new ArrayList<>();
     private String searchQuery;
 
@@ -9,14 +10,17 @@ public class YouTubeChannel {
         this.searchQuery = searchQuery;
     }
 
+    @Override
     public void subscribe(Observer observer) {
         observers.add(observer);
     }
 
+    @Override
     public void unsubscribe(Observer observer) {
         observers.remove(observer);
     }
 
+    @Override
     public void notifyObservers(String videoTitle, String channelTitle, String uploadDate) {
         for (Observer observer : observers) {
             observer.update(videoTitle, channelTitle, uploadDate);
