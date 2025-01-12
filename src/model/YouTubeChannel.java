@@ -2,7 +2,6 @@ package model;
 import java.util.ArrayList;
 import java.util.List;
 
-
 public class YouTubeChannel implements Subject {
     private List<Observer> observers = new ArrayList<>();
     private String searchQuery;

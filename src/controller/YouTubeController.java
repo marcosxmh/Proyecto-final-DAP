@@ -1,23 +1,17 @@
 package controller;
 
-import model.RecommendationStrategy;
-import model.DescriptionBasedRecommendation;
-import model.TagsBasedRecommendation;
 import model.YouTubeAPIService;
-import view.UserGUI;
 import model.YouTubeChannel;
-
-import java.util.List;
+import view.UserGUI;
+import model.UsageStats;
 
 public class YouTubeController {
     private YouTubeAPIService apiService;
     private UserGUI userGUI;
-    private RecommendationStrategy recommendationStrategy;
 
     public YouTubeController(YouTubeAPIService apiService, UserGUI userGUI) {
         this.apiService = apiService;
         this.userGUI = userGUI;
-        this.recommendationStrategy = new DescriptionBasedRecommendation(); // Estrategia predeterminada
         initController();
     }
 
@@ -25,7 +19,6 @@ public class YouTubeController {
         userGUI.getSearchButton().addActionListener(e -> searchChannels());
         userGUI.getSubscribeButton().addActionListener(e -> subscribeUser());
         userGUI.getUnsubscribeButton().addActionListener(e -> unsubscribeUser());
-        userGUI.getRecommendButton().addActionListener(e -> recommendSimilarChannels());
     }
 
     private void searchChannels() {
@@ -35,13 +28,15 @@ public class YouTubeController {
             return;
         }
         userGUI.updateChannelList(apiService.getAvailableChannels(searchQuery));
+        UsageStats.getInstance().incrementSearches(); // Registrar búsqueda
     }
 
     private void subscribeUser() {
         String selectedChannel = userGUI.getSelectedChannel();
         if (selectedChannel != null) {
             if (!apiService.channelExists(selectedChannel)) {
-                apiService.addChannel(new YouTubeChannel(selectedChannel));
+                YouTubeChannel newChannel = new YouTubeChannel(selectedChannel);
+                apiService.addChannel(newChannel);
             }
             YouTubeChannel channel = apiService.getChannel(selectedChannel);
             if (channel.getObservers().contains(userGUI.getSubscriber())) {
@@ -50,6 +45,7 @@ public class YouTubeController {
             }
             channel.subscribe(userGUI.getSubscriber());
             userGUI.showMessage("Subscribed to " + selectedChannel);
+            UsageStats.getInstance().incrementSubscriptions(); // Registrar suscripción
         }
     }
 
@@ -70,17 +66,4 @@ public class YouTubeController {
         }
     }
 
-    private void recommendSimilarChannels() {
-        String selectedChannel = userGUI.getSelectedChannel();
-        if (selectedChannel != null) {
-            List<String> recommendations = recommendationStrategy.recommendChannels(selectedChannel, apiService);
-            userGUI.showRecommendations(recommendations);
-        } else {
-            userGUI.showMessage("Please select a channel first.");
-        }
-    }
-
-    public void setRecommendationStrategy(RecommendationStrategy strategy) {
-        this.recommendationStrategy = strategy;
-    }
 }

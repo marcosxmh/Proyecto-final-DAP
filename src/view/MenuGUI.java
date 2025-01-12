@@ -2,6 +2,7 @@ package view;
 
 import controller.YouTubeController;
 import model.YouTubeAPIService;
+import model.UsageStats;
 
 import javax.swing.*;
 import java.awt.*;
@@ -16,8 +17,8 @@ public class MenuGUI extends JFrame {
         this.apiService = apiService;
 
         // Set up the frame
-        setTitle("Youtube Notification Program");
-        setSize(350, 250);
+        setTitle("YouTube Notification Program");
+        setSize(350, 300);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -34,9 +35,12 @@ public class MenuGUI extends JFrame {
         JLabel iconLabel = new JLabel(icon);
         iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
-        // Create button
+        // Create buttons
         JButton createUserButton = new JButton("Create User");
         createUserButton.setPreferredSize(new Dimension(100, 50));
+
+        JButton statsButton = new JButton("View Stats");
+        statsButton.setPreferredSize(new Dimension(100, 50));
 
         // Add action listeners
         createUserButton.addActionListener(e -> {
@@ -60,6 +64,11 @@ public class MenuGUI extends JFrame {
             });
         });
 
+        statsButton.addActionListener(e -> {
+            UsageStats stats = UsageStats.getInstance();
+            JOptionPane.showMessageDialog(null, stats.toString(), "Usage Statistics", JOptionPane.INFORMATION_MESSAGE);
+        });
+
         // Add components to panel with GridBagConstraints
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -74,6 +83,13 @@ public class MenuGUI extends JFrame {
         gbc.weighty = 1;
         gbc.anchor = GridBagConstraints.CENTER;
         panel.add(createUserButton, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.weightx = 1;
+        gbc.weighty = 1;
+        gbc.anchor = GridBagConstraints.CENTER;
+        panel.add(statsButton, gbc);
 
         // Add panel to frame
         add(panel);
