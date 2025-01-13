@@ -4,10 +4,15 @@ import model.Subscriber;
 import model.YouTubeAPIService;
 import model.YouTubeChannel;
 import model.ChannelDetails;
-
+import model.ExportTemplate;
+import model.CSVExport;
+import model.JSONExport;
+import model.XMLExport;
+import model.SearchHistoryManagerImpl;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 import org.json.JSONObject;
@@ -31,7 +36,7 @@ public class UserGUI extends JFrame {
     private JButton viewDetailsButton;
     private JTextArea searchHistoryArea;
     private JButton playVideoButton;
-
+    private JButton exportButton;
 
     public UserGUI(String userName, YouTubeAPIService apiService) {
         subscriber = new Subscriber(userName);
@@ -54,6 +59,7 @@ public class UserGUI extends JFrame {
         notificationArea.setEditable(false);
         viewDetailsButton = new JButton("View Channel Details");
         playVideoButton = new JButton("Play Video");
+        exportButton = new JButton("Export History");
 
         // Inicialización de searchHistoryArea
         searchHistoryArea = new JTextArea(4, 25);
@@ -94,6 +100,7 @@ public class UserGUI extends JFrame {
         buttonPanel.add(refreshButton);
         buttonPanel.add(viewDetailsButton); // Añadir el botón de detalles al panel de botones
         buttonPanel.add(playVideoButton);
+        buttonPanel.add(exportButton);
         bottomPanel.add(buttonPanel);
 
         JPanel notificationPanel = new JPanel(new BorderLayout());
@@ -173,6 +180,61 @@ public class UserGUI extends JFrame {
                 JOptionPane.showMessageDialog(null, "Please select a channel first.");
             }
         });
+
+        // Add action listener to BOTON PARA EXPORTAR HISTORIAL
+        exportButton.addActionListener(e -> {
+            String[] options = {"CSV", "JSON", "XML"};
+            String choice = (String) JOptionPane.showInputDialog(
+                    this,
+                    "Choose export format:",
+                    "Export Options",
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]
+            );
+
+            if (choice != null) {
+                ExportTemplate exporter;
+                switch (choice) {
+                    case "CSV":
+                        exporter = new CSVExport();
+                        break;
+                    case "JSON":
+                        exporter = new JSONExport();
+                        break;
+                    case "XML":
+                        exporter = new XMLExport();
+                        break;
+                    default:
+                        JOptionPane.showMessageDialog(this, "Invalid option selected.");
+                        return;
+                }
+
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setDialogTitle("Select File Location");
+                int userSelection = fileChooser.showSaveDialog(this);
+
+                if (userSelection == JFileChooser.APPROVE_OPTION) {
+                    File fileToSave = fileChooser.getSelectedFile();
+                    String filePath = fileToSave.getAbsolutePath();
+
+                    // Obtén el historial de búsqueda del suscriptor
+                    List<String> searchHistory = ((SearchHistoryManagerImpl) subscriber.getSearchHistoryManager()).getSearchHistory();
+
+
+                    if (searchHistory.isEmpty()) {
+                        JOptionPane.showMessageDialog(this, "No search history to export.");
+                        return;
+                    }
+
+                    exporter.export(searchHistory, filePath);
+                } else {
+                    JOptionPane.showMessageDialog(this, "File path selection canceled.");
+                }
+            }
+        });
+
 
         // Initially disable buttons
         subscribeButton.setEnabled(false);

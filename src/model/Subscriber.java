@@ -44,9 +44,15 @@ public class Subscriber implements Observer {
         searchHistoryManager.addSearchHistory(searchQuery);
     }
 
+
     @Override
     public void viewSearchHistoryInGUI(JTextArea searchHistoryArea) {
         searchHistoryManager.viewSearchHistoryInGUI(searchHistoryArea);
     }
+
+    public SearchHistoryManager getSearchHistoryManager() {
+        return searchHistoryManager;
+    }
+
 
 }
