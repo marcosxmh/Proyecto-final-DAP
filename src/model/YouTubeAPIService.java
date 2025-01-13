@@ -1,3 +1,4 @@
+package model;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -190,5 +191,130 @@ public class YouTubeAPIService {
         }
 
         return new ArrayList<>(channelTitles);
+    }
+
+    // Metodo para obtener el ID de un canal
+    public String getChannelIdByName(String channelName) {
+        try {
+            String urlString = String.format("%s?part=snippet&type=channel&q=%s&key=%s",
+                    BASE_URL, channelName.replace(" ", "%20"), API_KEY);
+            URL url = new URL(urlString);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                StringBuilder response = new StringBuilder();
+                String line;
+                while ((line = in.readLine()) != null) {
+                    response.append(line);
+                }
+                in.close();
+
+                JSONObject jsonResponse = new JSONObject(response.toString());
+                System.out.println(jsonResponse.toString(2)); // Imprimir respuesta JSON para depuración
+
+                JSONArray items = jsonResponse.getJSONArray("items");
+                if (items.length() > 0) {
+                    JSONObject channel = items.getJSONObject(0);
+                    return channel.getJSONObject("id").getString("channelId");
+                }
+            } else {
+                System.out.println("Error en la conexión: " + responseCode);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    // Obtener detalles del canal, incluyendo redes sociales
+    public JSONObject getChannelInfo(String channelId) {
+        try {
+            String url = String.format("https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=%s&key=%s", channelId, API_KEY);
+            HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+            connection.setRequestMethod("GET");
+
+            int responseCode = connection.getResponseCode();
+            System.out.println("Response Code: " + responseCode); // Depuración
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            StringBuilder response = new StringBuilder();
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+            reader.close();
+
+            JSONObject jsonResponse = new JSONObject(response.toString());
+            System.out.println(jsonResponse.toString(2)); // Imprimir respuesta JSON para depuración
+
+            JSONArray items = jsonResponse.getJSONArray("items");
+            if (items.length() > 0) {
+                JSONObject channel = items.getJSONObject(0);
+                JSONObject snippet = channel.getJSONObject("snippet");
+                JSONObject statistics = channel.getJSONObject("statistics");
+
+                JSONObject channelDetails = new JSONObject();
+                channelDetails.put("name", snippet.getString("title"));
+                channelDetails.put("subscribers", statistics.getInt("subscriberCount"));
+                channelDetails.put("description", snippet.getString("description"));
+
+                // Obtener redes sociales, si están disponibles
+                JSONArray socialLinks = new JSONArray();
+                if (snippet.has("customUrl")) {
+                    JSONObject socialLink = new JSONObject();
+                    socialLink.put("platform", "YouTube");
+                    socialLink.put("link", "https://youtube.com/" + snippet.getString("customUrl"));
+                    socialLinks.put(socialLink);
+                }
+                channelDetails.put("socialLinks", socialLinks);
+
+                return channelDetails;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public String getVideoIdByName(String videoName) {
+        try {
+            String urlString = String.format("https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=%s&key=%s",
+                    videoName.replace(" ", "%20"), API_KEY);
+            URL url = new URL(urlString);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                StringBuilder response = new StringBuilder();
+                String line;
+                while ((line = in.readLine()) != null) {
+                    response.append(line);
+                }
+                in.close();
+
+                JSONObject jsonResponse = new JSONObject(response.toString());
+                JSONArray items = jsonResponse.getJSONArray("items");
+
+                if (items.length() > 0) {
+                    // Obtener el video ID del primer resultado
+                    JSONObject firstItem = items.getJSONObject(0);
+                    return firstItem.getJSONObject("id").getString("videoId");
+                } else {
+                    return null;  // No se encontró el video
+                }
+            } else {
+                System.out.println("Error en la conexión: " + responseCode);
+                return null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }
