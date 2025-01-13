@@ -45,4 +45,11 @@ public class SearchHistoryManagerImpl implements SearchHistoryManager {
 
         searchHistoryArea.setText(history.toString());
     }
+
+    public List<String> getSearchHistory() {
+        return new ArrayList<>(searchHistory); // Retorna una copia del historial
+    }
+
+
+
 }
