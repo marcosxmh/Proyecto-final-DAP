@@ -1,0 +1,213 @@
+@startuml
+class view.UserGUI {
+- Subscriber subscriber
+- JTextField searchField
+- JButton searchButton
+- JList<String> channelList
+- DefaultListModel<String> listModel
+- YouTubeAPIService apiService
+- JButton subscribeButton
+- JButton unsubscribeButton
+- JButton refreshButton
+- JTextArea notificationArea
+- JButton viewDetailsButton
+- JTextArea searchHistoryArea
+- JButton playVideoButton
+- JButton exportButton
+- void viewChannelDetails()
+- void displayChannelDetails(ChannelDetails)
++ String getUserName()
++ Subscriber getSubscriber()
++ JButton getSearchButton()
++ JButton getSubscribeButton()
++ JButton getUnsubscribeButton()
++ String getSearchQuery()
++ String getSelectedChannel()
++ void updateChannelList(List<String>)
++ void updateNotificationArea()
++ void showMessage(String)
++ {static} void openWebpage(String)
+}
+
+
+class model.ChannelDetails {
+- String channelName
+- int subscribers
+- Map<String,String> socialLinks
+- String description
++ String getChannelName()
++ int getSubscribers()
++ Map<String,String> getSocialLinks()
++ String getDescription()
++ void addSocialLink(String,String)
++ void removeSocialLink(String)
++ String getSocialLink(String)
++ boolean hasSocialLink(String)
++ String toString()
+}
+
+
+class view.MenuGUI {
+- YouTubeAPIService apiService
+- List<UserGUI> userGUIs
+}
+
+class model.CSVExport {
+# String formatData(List<String>)
+# void writeFile(String,String)
+}
+
+class model.XMLExport {
+# String formatData(List<String>)
+# void writeFile(String,String)
+}
+
+class model.UsageStats {
+- {static} UsageStats instance
+- Instant startTime
+- Duration totalTimeUsed
+- AtomicInteger totalSearches
+- AtomicInteger totalSubscriptions
++ {static} UsageStats getInstance()
++ void incrementSearches()
++ void incrementSubscriptions()
++ void endSession()
++ int getTotalSearches()
++ int getTotalSubscriptions()
++ Duration getTotalTimeUsed()
++ String toString()
+}
+
+
+class Main {
++ {static} void main(String[])
+}
+
+interface model.Subject {
+~ void subscribe(Observer)
+~ void unsubscribe(Observer)
+~ void notifyObservers(String,String,String)
+}
+
+class model.SearchCaretaker {
+- List<SearchMemento> mementoList
++ void addMemento(SearchMemento)
++ SearchMemento getMemento(int)
++ int getMementoCount()
+}
+
+
+abstract class model.ExportTemplate {
++ void export(List<String>,String)
+# {abstract}String formatData(List<String>)
+# {abstract}void writeFile(String,String)
+}
+
+class model.Subscriber {
+- String name
+- HashMap<String,String> lastVideos
+- SearchHistoryManager searchHistoryManager
+- List<String> lastNotifications
++ String getName()
++ void update(String,String,String)
++ void clearLastNotifications()
++ HashMap<String,String> getLastVideos()
++ void addSearchHistory(String)
++ void viewSearchHistoryInGUI(JTextArea)
++ SearchHistoryManager getSearchHistoryManager()
+}
+
+
+class model.SearchMemento {
+- List<String> searchHistory
++ List<String> getSearchHistory()
+}
+
+
+interface model.SearchHistoryManager {
+~ void addSearchHistory(String)
+~ void viewSearchHistoryInGUI(JTextArea)
+}
+
+class model.JSONExport {
+# String formatData(List<String>)
+# void writeFile(String,String)
+}
+
+interface model.Observer {
+~ void update(String,String,String)
+~ void clearLastNotifications()
+~ void addSearchHistory(String)
+~ void viewSearchHistoryInGUI(JTextArea)
+}
+
+class controller.YouTubeController {
+- YouTubeAPIService apiService
+- UserGUI userGUI
+- void initController()
+- void searchChannels()
+- void subscribeUser()
+- void unsubscribeUser()
+}
+
+
+interface model.Adapter {
+~ ChannelDetails getChannelDetails(String)
+}
+
+class model.YouTubeChannel {
+- List<Observer> observers
+- String searchQuery
++ void subscribe(Observer)
++ void unsubscribe(Observer)
++ void notifyObservers(String,String,String)
++ String getSearchQuery()
++ List<Observer> getObservers()
+}
+
+
+class model.SearchHistoryManagerImpl {
+- SearchCaretaker caretaker
+- List<String> searchHistory
++ void addSearchHistory(String)
++ void viewSearchHistoryInGUI(JTextArea)
++ List<String> getSearchHistory()
+}
+
+
+class model.YouTubeAPIService {
+- {static} String API_KEY
+- {static} String BASE_URL
+- List<YouTubeChannel> channels
++ void addChannel(YouTubeChannel)
++ List<YouTubeChannel> getChannels()
++ boolean channelExists(String)
++ YouTubeChannel getChannel(String)
++ void fetchVideos(YouTubeChannel)
++ List<String> getAvailableChannels(String)
++ String getChannelIdByName(String)
++ JSONObject getChannelInfo(String)
++ String getVideoIdByName(String)
+}
+
+
+class model.ChannelDetailsAdapter {
+- YouTubeAPIService apiService
+- String apiKey
++ ChannelDetails getChannelDetails(String)
++ String getChannelIdByName(String)
+}
+
+
+
+
+view.JFrame <|-- view.UserGUI
+view.JFrame <|-- view.MenuGUI
+model.ExportTemplate <|-- model.CSVExport
+model.ExportTemplate <|-- model.XMLExport
+model.Observer <|.. model.Subscriber
+model.ExportTemplate <|-- model.JSONExport
+model.Subject <|.. model.YouTubeChannel
+model.SearchHistoryManager <|.. model.SearchHistoryManagerImpl
+model.Adapter <|.. model.ChannelDetailsAdapter
+@enduml
